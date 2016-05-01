@@ -767,6 +767,25 @@ void CGameContext::OnTick()
 			SendChat(-1, CGameContext::CHAT_ALL, Line);
 	}
 
+	// announce the number of helpers on the server
+	if(g_Config.m_SvHelperAnnouncement &&
+			(Server()->Tick() % ((g_Config.m_SvAnnouncementInterval == g_Config.m_SvHelperAnnouncement ? g_Config.m_SvHelperAnnouncement+1
+			: g_Config.m_SvHelperAnnouncement) * Server()->TickSpeed() * 60) == 0))
+	{
+		int NumHelpers = 0;
+		for (int i = 0; i < MAX_CLIENTS; ++i)
+		{
+			if(m_apPlayers[i] && m_apPlayers[i]->CanHelp())
+				NumHelpers++;
+		}
+		if(NumHelpers > 0)
+		{
+			char aBuf[128];
+			str_format(aBuf, sizeof(aBuf), "There %s %i helper%s online, use \"/help\" if you get stuck", NumHelpers > 1 ? "are" : "is", NumHelpers, NumHelpers > 1 ? "s" : "");
+			SendBroadcast(aBuf, -1);
+		}
+	}
+
 	if(Collision()->m_NumSwitchers > 0)
 		for (int i = 0; i < Collision()->m_NumSwitchers+1; ++i)
 		{
@@ -920,6 +939,7 @@ void CGameContext::OnClientEnter(int ClientID)
 
 		SendChatTarget(ClientID, "DDraceNetwork Mod. Version: " GAME_VERSION);
 		SendChatTarget(ClientID, "please visit https://ddnet.tw or say /info for more info");
+		SendChatTarget(ClientID, "This server is running the helpermod by Henritees, use /help if you get stuck.");
 
 		if(g_Config.m_SvWelcome[0]!=0)
 			SendChatTarget(ClientID,g_Config.m_SvWelcome);

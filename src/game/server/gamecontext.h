@@ -269,7 +269,7 @@ private:
 
 	static void ConCredits(IConsole::IResult *pResult, void *pUserData);
 	static void ConInfo(IConsole::IResult *pResult, void *pUserData);
-	static void ConHelp(IConsole::IResult *pResult, void *pUserData);
+	static void ConCmdHelp(IConsole::IResult *pResult, void *pUserData);
 	static void ConSettings(IConsole::IResult *pResult, void *pUserData);
 	static void ConRules(IConsole::IResult *pResult, void *pUserData);
 	static void ConKill(IConsole::IResult *pResult, void *pUserData);
@@ -325,9 +325,16 @@ private:
 	static void ConFreezeHammer(IConsole::IResult *pResult, void *pUserData);
 	static void ConUnFreezeHammer(IConsole::IResult *pResult, void *pUserData);
 
+	// helpermod
+	static void ConHelp(IConsole::IResult *pResult, void *pUserData);
+	static void ConGoto(IConsole::IResult *pResult, void *pUserData);
+	static void ConHelpList(IConsole::IResult *pResult, void *pUserData);
+	static void ConReturn(IConsole::IResult *pResult, void *pUserData);
+
+
 	enum
 	{
-		MAX_MUTES=32,
+		MAX_MUTES=64,
 	};
 	struct CMute
 	{

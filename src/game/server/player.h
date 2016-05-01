@@ -159,6 +159,10 @@ public:
 	bool m_Afk;
 	int m_KillMe;
 
+	// helpermod
+	int m_NeedHelp;
+	bool CanHelp() const { return !m_Afk && m_Authed; }
+
 	int m_ChatScore;
 
 	bool AfkTimer(int new_target_x, int new_target_y); //returns true if kicked

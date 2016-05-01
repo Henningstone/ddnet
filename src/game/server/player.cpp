@@ -27,6 +27,7 @@ CPlayer::CPlayer(CGameContext *pGameServer, int ClientID, int Team)
 	m_pCharacter = 0;
 	m_NumInputs = 0;
 	m_KillMe = 0;
+	m_NeedHelp = 0;
 	Reset();
 }
 
@@ -165,6 +166,19 @@ void CPlayer::Tick()
 		m_ForcePauseTime--;
 
 	Server()->SetClientScore(m_ClientID, m_Score);
+
+	if(m_NeedHelp > 0 && Server()->Tick() > m_NeedHelp + g_Config.m_SvHelpTimeout*Server()->TickSpeed())
+	{
+		m_NeedHelp = 0;
+		char aBuf[256];
+		str_format(aBuf, sizeof(aBuf), "Your help request timed out, the helpers seem to be busy right now :\\");
+		GameServer()->SendChatTarget(m_ClientID, aBuf);
+	}
+
+	if(m_NeedHelp < 0 && (m_NeedHelp+Server()->Tick())/Server()->TickSpeed() > g_Config.m_SvHelpCooldown)
+	{
+		m_NeedHelp = 0; // reset cooldown
+	}
 
 	// do latency stuff
 	{
@@ -477,6 +491,9 @@ void CPlayer::KillCharacter(int Weapon)
 		delete m_pCharacter;
 		m_pCharacter = 0;
 	}
+	if(m_NeedHelp > 0)
+		GameServer()->SendChatTarget(m_ClientID, "Your help request expired because you died.");
+	m_NeedHelp = -(Server()->Tick()+10);
 }
 
 void CPlayer::Respawn(bool WeakHook)

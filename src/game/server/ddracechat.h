@@ -10,7 +10,7 @@ CHAT_COMMAND("credits", "", CFGFLAG_CHAT|CFGFLAG_SERVER, ConCredits, this, "Show
 CHAT_COMMAND("emote", "?s[emote name] i[duration in seconds]", CFGFLAG_CHAT|CFGFLAG_SERVER, ConEyeEmote, this, "Sets your tee's eye emote")
 CHAT_COMMAND("eyeemote", "?s['on'|'off'|'toggle']", CFGFLAG_CHAT|CFGFLAG_SERVER, ConSetEyeEmote, this, "Toggles use of standard eye-emotes on/off, eyeemote s, where s = on for on, off for off, toggle for toggle and nothing to show current status")
 CHAT_COMMAND("settings", "?s[configname]", CFGFLAG_CHAT|CFGFLAG_SERVER, ConSettings, this, "Shows gameplay information for this server")
-CHAT_COMMAND("help", "?r[command]", CFGFLAG_CHAT|CFGFLAG_SERVER, ConHelp, this, "Shows help to command r, general help if left blank")
+CHAT_COMMAND("cmdhelp", "?r[command]", CFGFLAG_CHAT|CFGFLAG_SERVER, ConCmdHelp, this, "Shows help to command r, general help if left blank")
 CHAT_COMMAND("info", "", CFGFLAG_CHAT|CFGFLAG_SERVER, ConInfo, this, "Shows info about this server")
 CHAT_COMMAND("me", "r[message]", CFGFLAG_CHAT|CFGFLAG_SERVER, ConMe, this, "Like the famous irc command '/me says hi' will display '<yourname> says hi'")
 CHAT_COMMAND("w", "s[player name] r[message]", CFGFLAG_CHAT|CFGFLAG_SERVER, ConWhisper, this, "Whisper something to someone (private message)")
@@ -45,6 +45,15 @@ CHAT_COMMAND("r", "", CFGFLAG_CHAT|CFGFLAG_SERVER, ConRescue, this, "Teleport yo
 CHAT_COMMAND("rescue", "", CFGFLAG_CHAT|CFGFLAG_SERVER, ConRescue, this, "Teleport yourself out of freeze (use sv_rescue 1 to enable this feature)")
 
 CHAT_COMMAND("kill", "", CFGFLAG_CHAT|CFGFLAG_SERVER, ConProtectedKill, this, "Kill yourself")
+
+// helpermod
+CHAT_COMMAND("help", "", CFGFLAG_CHAT|CFGFLAG_SERVER, ConHelp, this, "Call a helper if you are stuck")
+CHAT_COMMAND("n", "?i[number]", CFGFLAG_CHAT|CFGFLAG_SERVER, ConGoto, this, "Go to a player who requested help; no args → goes to the first player who requested help | args >= 0 goes to a specific client ID | args < 0 → choose from help list index")
+CHAT_COMMAND("next", "?i[number]", CFGFLAG_CHAT|CFGFLAG_SERVER, ConGoto, this, "Go to a player who requested help; no args → go to the first player who requested help | args >= 0 goes to a specific client ID | args < 0 → choose from help list index")
+CHAT_COMMAND("nl", "", CFGFLAG_CHAT|CFGFLAG_SERVER, ConHelpList, this, "alias for \"/nextlist\"; Print the list of all players who need help")
+CHAT_COMMAND("nextlist", "", CFGFLAG_CHAT|CFGFLAG_SERVER, ConHelpList, this, "Print the list of all players who need help")
+CHAT_COMMAND("return", "", CFGFLAG_CHAT|CFGFLAG_SERVER, ConReturn, this, "Return to your original position and state before you helped somebody")
+CHAT_COMMAND("ret", "", CFGFLAG_CHAT|CFGFLAG_SERVER, ConReturn, this, "Alias for \"/return\"; Return to your original position and state before you helped somebody")
 
 #if defined(CONF_SQL)
 CHAT_COMMAND("times", "?s[playername] ?i[number of times to skip]", CFGFLAG_CHAT|CFGFLAG_SERVER, ConTimes, this, "/times ?s?i shows last 5 times of the server or of a player beginning with name s starting with time i (i = 1 by default)")

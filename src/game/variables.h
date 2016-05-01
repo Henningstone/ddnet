@@ -166,6 +166,9 @@ MACRO_CONFIG_INT(SvSendVotesPerTick, sv_send_votes_per_tick, 5, 1, 15, CFGFLAG_S
 
 MACRO_CONFIG_INT(SvRescue, sv_rescue, 0, 0, 1, CFGFLAG_SERVER, "Allow /rescue command so players can teleport themselves out of freeze")
 MACRO_CONFIG_INT(SvRescueDelay, sv_rescue_delay, 5, 0, 1000, CFGFLAG_SERVER, "Number of seconds inbetween two rescues")
+MACRO_CONFIG_INT(SvHelpTimeout, sv_help_timeout, 45, 30, 600, CFGFLAG_SERVER, "Number of seconds after which a help request times out")
+MACRO_CONFIG_INT(SvHelpCooldown, sv_help_cooldown, 10, 5, 300, CFGFLAG_SERVER, "Number of seconds a player has to wait before requesting help again")
+MACRO_CONFIG_INT(SvHelperAnnouncement, sv_helper_announcement_interval, 7, 0, 1200, CFGFLAG_SERVER, "Interval between broadcast announcements of how many helpers are online, 0 to disable")
 
 // debug
 #ifdef CONF_DEBUG // this one can crash the server if not used correctly

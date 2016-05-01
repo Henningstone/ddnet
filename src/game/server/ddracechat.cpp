@@ -1,5 +1,6 @@
 /* (c) Shereef Marzouk. See "licence DDRace.txt" and the readme.txt in the root of the distribution for more information. */
 #include "gamecontext.h"
+#include <base/tl/sorted_array.h>
 #include <engine/shared/config.h>
 #include <engine/shared/protocol.h>
 #include <engine/server/server.h>
@@ -28,7 +29,7 @@ void CGameContext::ConCredits(IConsole::IResult *pResult, void *pUserData)
 	pSelf->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "credit",
 		"trml, Soreu, hi_leute_gll, Lady Saavik, Chairn, heinrich5991 &");
 	pSelf->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "credit",
-		"others.");
+		"others. The helpermod was written by Henritees.");
 	pSelf->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "credit",
 		"Based on DDRace by the DDRace developers,");
 	pSelf->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "credit",
@@ -54,7 +55,7 @@ void CGameContext::ConInfo(IConsole::IResult *pResult, void *pUserData)
 			"Or visit ddnet.tw");
 }
 
-void CGameContext::ConHelp(IConsole::IResult *pResult, void *pUserData)
+void CGameContext::ConCmdHelp(IConsole::IResult *pResult, void *pUserData)
 {
 	CGameContext *pSelf = (CGameContext *) pUserData;
 
@@ -63,7 +64,7 @@ void CGameContext::ConHelp(IConsole::IResult *pResult, void *pUserData)
 		pSelf->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "help",
 				"/cmdlist will show a list of all chat commands");
 		pSelf->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "help",
-				"/help + any command will show you the help for this command");
+				"/cmdhelp + any command will show you the help for this command");
 		pSelf->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "help",
 				"Example /help settings will display the help about ");
 	}
@@ -1299,6 +1300,277 @@ void CGameContext::ConProtectedKill(IConsole::IResult *pResult, void *pUserData)
 			//pSelf->SendChatTarget(pResult->m_ClientID, aBuf);
 	}
 }
+
+// helpermod
+void CGameContext::ConHelp(IConsole::IResult *pResult, void *pUserData)
+{
+	CGameContext *pSelf = (CGameContext *) pUserData;
+	if (!CheckClientID(pResult->m_ClientID))
+		return;
+	CPlayer *pPlayer = pSelf->m_apPlayers[pResult->m_ClientID];
+	if (!pPlayer)
+		return;
+	CCharacter* pChr = pPlayer->GetCharacter();
+	if (!pChr)
+		return;
+
+	const int _MAX_CLIENTS = pSelf->Server()->MaxClients();
+
+	// find out who is helper
+	int HelpersOnline = 0;
+	CPlayer *apHelpers[_MAX_CLIENTS] = {0};
+	for(int i = 0; i < _MAX_CLIENTS; i++)
+	{
+		if(!pSelf->m_apPlayers[i] || !pSelf->m_apPlayers[i]->CanHelp() || pSelf->m_apPlayers[i]->GetCID() == pResult->m_ClientID)
+			continue;
+		apHelpers[HelpersOnline++] = pSelf->m_apPlayers[i];
+	}
+
+	if(pChr->m_Super)
+		pSelf->SendChatTarget(pResult->m_ClientID, "Dude, you don't need help, you've got super! o.O");
+	else if(pPlayer->m_NeedHelp > 0)
+		pSelf->SendChatTarget(pResult->m_ClientID, "You already requested help, please be patient and wait for a helper!");
+	else if(pPlayer->m_NeedHelp < 0)
+	{
+		char aBuf[256];
+		str_format(aBuf, sizeof(aBuf), "Please wait %i seconds before requesting help again", g_Config.m_SvHelpCooldown - (pPlayer->m_NeedHelp+pSelf->Server()->Tick())/pSelf->Server()->TickSpeed());
+		pSelf->SendChatTarget(pResult->m_ClientID, aBuf);
+	}
+	else if(HelpersOnline == 0)
+		pSelf->SendChatTarget(pResult->m_ClientID, "There are no helpers online at the moment");
+	else
+	{
+		char aBuf[256];
+		str_format(aBuf, sizeof(aBuf), "Called %i helper%s, please wait for %s to come", HelpersOnline, HelpersOnline > 1 ? "s" : "", HelpersOnline > 1 ? "one" : "them");
+		pSelf->SendChatTarget(pResult->m_ClientID, aBuf);
+		pPlayer->m_NeedHelp = pSelf->Server()->Tick();
+
+		// notify the helpers
+		str_format(aBuf, sizeof(aBuf), "[HELPER] '%s' (ID:%i) requested help, type /n to accept!", pSelf->Server()->ClientName(pResult->m_ClientID), pResult->m_ClientID);
+		for(int i = 0; i < HelpersOnline; i++)
+			pSelf->SendChatTarget(apHelpers[i]->GetCID(), aBuf);
+	}
+}
+
+// helpermod
+struct SortHelper
+{
+	SortHelper(CPlayer *pPlayer) : m_pPlayer(pPlayer)
+	{
+		m_RequestTick = pPlayer->m_NeedHelp;
+	}
+	SortHelper(){};
+	CPlayer *m_pPlayer;
+	int m_RequestTick;
+	bool operator<(SortHelper& other) const { return this->m_RequestTick < other.m_RequestTick; }
+};
+void CGameContext::ConGoto(IConsole::IResult *pResult, void *pUserData) // this is the /n command
+{
+	CGameContext *pSelf = (CGameContext *) pUserData;
+	if (!CheckClientID(pResult->m_ClientID))
+		return;
+	CPlayer *pPlayer = pSelf->m_apPlayers[pResult->m_ClientID];
+	if (!pPlayer)
+		return;
+
+	if(!pPlayer->m_Authed)
+	{
+		pSelf->SendChatTarget(pResult->m_ClientID, "Only helpers can use this command!");
+		return;
+	}
+
+	// search for players who need help
+	sorted_array<SortHelper> aHelpNeeders;
+	for(int i = 0; i < pSelf->Server()->MaxClients(); i++)
+	{
+		if(!pSelf->m_apPlayers[i] || pSelf->m_apPlayers[i]->GetCID() == pResult->m_ClientID || !pSelf->m_apPlayers[i]->m_NeedHelp)
+			continue;
+		SortHelper e(pSelf->m_apPlayers[i]);
+		aHelpNeeders.add(e);
+	}
+
+	if(aHelpNeeders.size() == 0)
+	{
+		pSelf->SendChatTarget(pResult->m_ClientID, "Currently no one needs help.");
+		return;
+	}
+
+	aHelpNeeders.sort_range();
+
+	CPlayer *pHelpNeeder = 0;
+	if(pResult->NumArguments() == 0) // go help the first player who requested, don't let em wait
+	{
+		pHelpNeeder = aHelpNeeders[0].m_pPlayer;
+	}
+	else // pick one player out we want to help
+	{
+		char aBuf[256];
+		const int ID = pResult->GetInteger(0);
+
+		// get by index
+		if(abs(ID) > pSelf->Server()->MaxClients())
+		{
+			str_format(aBuf, sizeof(aBuf), "Given client ID %i is too high, maximum is %i!", ID, pSelf->Server()->MaxClients());
+			pSelf->SendChatTarget(pResult->m_ClientID, aBuf);
+			return;
+		}
+		else if(ID < 0)
+		{
+			const int index = -1-ID;
+			if(index+1 > aHelpNeeders.size())
+			{
+				str_format(aBuf, sizeof(aBuf), "Only %i player%s need%s help", aHelpNeeders.size(), aHelpNeeders.size() > 1 ? "s" : "", aHelpNeeders.size() > 1 ? "" : "s");
+				pSelf->SendChatTarget(pResult->m_ClientID, aBuf);
+				return;
+			}
+			else
+				pHelpNeeder = aHelpNeeders[index].m_pPlayer;
+		}
+		else // get by client id
+		{
+			for(int i = 0; i < aHelpNeeders.size(); i++)
+			{
+				if(aHelpNeeders[i].m_pPlayer->GetCID() == ID)
+				{
+					pHelpNeeder = aHelpNeeders[i].m_pPlayer;
+					break;
+				}
+			}
+			if(!pHelpNeeder)
+			{
+				str_format(aBuf, sizeof(aBuf), "The player with ID %i ('%s') doesn't need help", ID, pSelf->Server()->ClientName(ID));
+				pSelf->SendChatTarget(pResult->m_ClientID, aBuf);
+				return;
+			}
+		}
+	}
+
+	// do it!
+	if(pPlayer->GetTeam() == TEAM_SPECTATORS)
+		pPlayer->SetTeam(TEAM_FLOCK);
+
+	if(!pPlayer->GetCharacter())
+		pPlayer->ForceSpawn(vec2(pHelpNeeder->GetCharacter()->m_Pos.x, pHelpNeeder->GetCharacter()->m_Pos.y));
+	else
+	{
+		CCharacter *pChr = pPlayer->GetCharacter();
+		int TeleTo = pHelpNeeder->GetCID();
+
+		if(!pChr->m_StateBeforeHelping.NumHelps)
+		{
+			pChr->m_StateBeforeHelping.m_Pos = pChr->m_Pos;
+			pChr->m_StateBeforeHelping.m_Super = pChr->m_Super;
+		}
+		pChr->m_StateBeforeHelping.NumHelps++; // let's save how many people we've helped :D
+
+		pChr->Core()->m_Pos = pSelf->m_apPlayers[TeleTo]->m_ViewPos;
+		pChr->m_Pos = pSelf->m_apPlayers[TeleTo]->m_ViewPos;
+		pChr->m_PrevPos = pSelf->m_apPlayers[TeleTo]->m_ViewPos;
+		pChr->m_DDRaceState = DDRACE_CHEAT;
+		pPlayer->GetCharacter()->GetCore().m_Pos = pHelpNeeder->GetCharacter()->m_Pos;
+	}
+	pHelpNeeder->m_NeedHelp = -(pSelf->Server()->Tick() + g_Config.m_SvHelpCooldown); // set the cooldown timer
+
+	// super the helper if he isn't already
+	if(!pPlayer->GetCharacter()->m_Super)
+		CGameContext::ConSuper(pResult, pUserData);
+
+	char aBuf[256];
+	str_format(aBuf, sizeof(aBuf), "Teleporting to '%s' in order help them", pSelf->Server()->ClientName(pHelpNeeder->GetCID()));
+	pSelf->SendChatTarget(pResult->m_ClientID, aBuf);
+	str_format(aBuf, sizeof(aBuf), "Your help request was accepted by '%s'.", pSelf->Server()->ClientName(pPlayer->GetCID()));
+	pSelf->SendChatTarget(pHelpNeeder->GetCID(), aBuf);
+
+}
+
+// helpermod
+void CGameContext::ConReturn(IConsole::IResult *pResult, void *pUserData)
+{
+	CGameContext *pSelf = (CGameContext *) pUserData;
+	if (!CheckClientID(pResult->m_ClientID))
+		return;
+	CPlayer *pPlayer = pSelf->m_apPlayers[pResult->m_ClientID];
+	if (!pPlayer)
+		return;
+	CCharacter* pChr = pPlayer->GetCharacter();
+	if (!pChr)
+		return;
+
+	if(!pPlayer->m_Authed)
+	{
+		pSelf->SendChatTarget(pResult->m_ClientID, "Only helpers can use this command!");
+		return;
+	}
+
+	if(!pChr->m_StateBeforeHelping.NumHelps)
+	{
+		pSelf->SendChatTarget(pResult->m_ClientID, "Use this command to return to your original position after helping somebody");
+		return;
+	}
+
+	char aBuf[256];
+	str_format(aBuf, sizeof(aBuf), "Returning to your position before helping %i people...", pChr->m_StateBeforeHelping.NumHelps);
+	pSelf->SendChatTarget(pResult->m_ClientID, aBuf);
+
+	// reset position and super
+	pChr->m_Super = pChr->m_StateBeforeHelping.m_Super;
+	pChr->Core()->m_Pos = pChr->m_StateBeforeHelping.m_Pos;
+	pChr->m_Pos = pChr->m_StateBeforeHelping.m_Pos;
+	pChr->m_PrevPos = pChr->m_StateBeforeHelping.m_Pos;
+	pChr->m_DDRaceState = DDRACE_CHEAT;
+	pPlayer->GetCharacter()->GetCore().m_Pos = pChr->m_StateBeforeHelping.m_Pos;
+
+	// reset the memory
+	pChr->m_StateBeforeHelping.NumHelps = 0;
+	pChr->m_StateBeforeHelping.m_Super = false;
+}
+
+// helpermod
+void CGameContext::ConHelpList(IConsole::IResult *pResult, void *pUserData)
+{
+	CGameContext *pSelf = (CGameContext *) pUserData;
+	if (!CheckClientID(pResult->m_ClientID))
+		return;
+	CPlayer *pPlayer = pSelf->m_apPlayers[pResult->m_ClientID];
+	if (!pPlayer)
+		return;
+
+	if(!pPlayer->m_Authed)
+	{
+		pSelf->SendChatTarget(pResult->m_ClientID, "Only helpers can use this command!");
+		return;
+	}
+
+	// search for players who need help
+	sorted_array<SortHelper> aHelpNeeders;
+	for(int i = 0; i < pSelf->Server()->MaxClients(); i++)
+	{
+		if(!pSelf->m_apPlayers[i] || pSelf->m_apPlayers[i]->GetCID() == pResult->m_ClientID || !pSelf->m_apPlayers[i]->m_NeedHelp)
+			continue;
+		SortHelper e(pSelf->m_apPlayers[i]);
+		aHelpNeeders.add(e);
+	}
+
+	if(aHelpNeeders.size() == 0)
+	{
+		pSelf->SendChatTarget(pResult->m_ClientID, "Currently no one needs help.");
+		return;
+	}
+
+	aHelpNeeders.sort_range();
+
+	pSelf->SendChatTarget(pResult->m_ClientID, "╭────> PLAYERS WHO NEED HELP");
+	char aBuf[256];
+	for(int i = 0; i < aHelpNeeders.size(); i++)
+	{
+		CPlayer *P = aHelpNeeders[i].m_pPlayer;
+		str_format(aBuf, sizeof(aBuf), "• ID:%i '%s', waiting for %i seconds", P->GetCID(), pSelf->Server()->ClientName(P->GetCID()), (pSelf->Server()->Tick() - P->m_NeedHelp)/pSelf->Server()->TickSpeed());
+		pSelf->SendChatTarget(pResult->m_ClientID, aBuf);
+	}
+	pSelf->SendChatTarget(pResult->m_ClientID, "╰────────────────────────────────");
+
+}
+
 #if defined(CONF_SQL)
 void CGameContext::ConPoints(IConsole::IResult *pResult, void *pUserData)
 {

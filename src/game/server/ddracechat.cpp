@@ -25,11 +25,11 @@ void CGameContext::ConCredits(IConsole::IResult *pResult, void *pUserData)
 	pSelf->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "credit",
 		"Help and code by eeeee, HMH, east, CookieMichal, Learath2,");
 	pSelf->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "credit",
-		"Savander, laxa, Tobii, BeaR, Wohoo, nuborn, DoNe, Shiki,");
+		"Savander, laxa, Tobii, BeaR, Wohoo, nuborn, timakro, Shiki,");
 	pSelf->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "credit",
-		"trml, Soreu, hi_leute_gll, Lady Saavik, Chairn, heinrich5991 &");
+		"trml, Soreu, hi_leute_gll, Lady Saavik, Chairn, heinrich5991,");
 	pSelf->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "credit",
-		"others. The helpermod was written by Henritees.");
+		"swick, oy & others. The helpermod was written by Henritees.");
 	pSelf->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "credit",
 		"Based on DDRace by the DDRace developers,");
 	pSelf->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "credit",

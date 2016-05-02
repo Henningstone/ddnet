@@ -53,7 +53,7 @@ CHAT_COMMAND("next", "?i[number]", CFGFLAG_CHAT|CFGFLAG_SERVER, ConGoto, this, "
 CHAT_COMMAND("nl", "", CFGFLAG_CHAT|CFGFLAG_SERVER, ConHelpList, this, "alias for \"/nextlist\"; Print the list of all players who need help")
 CHAT_COMMAND("nextlist", "", CFGFLAG_CHAT|CFGFLAG_SERVER, ConHelpList, this, "Print the list of all players who need help")
 CHAT_COMMAND("return", "", CFGFLAG_CHAT|CFGFLAG_SERVER, ConReturn, this, "Return to your original position and state before you helped somebody")
-CHAT_COMMAND("ret", "", CFGFLAG_CHAT|CFGFLAG_SERVER, ConReturn, this, "Alias for \"/return\"; Return to your original position and state before you helped somebody")
+CHAT_COMMAND("rn", "", CFGFLAG_CHAT|CFGFLAG_SERVER, ConReturn, this, "Alias for \"/return\"; Return to your original position and state before you helped somebody")
 
 #if defined(CONF_SQL)
 CHAT_COMMAND("times", "?s[playername] ?i[number of times to skip]", CFGFLAG_CHAT|CFGFLAG_SERVER, ConTimes, this, "/times ?s?i shows last 5 times of the server or of a player beginning with name s starting with time i (i = 1 by default)")

@@ -254,6 +254,7 @@ public:
 	{
 		int NumHelps;
 		bool m_Super;
+		int m_DDRaceState;
 		vec2 m_Pos;
 	} m_StateBeforeHelping;
 

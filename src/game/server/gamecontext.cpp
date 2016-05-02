@@ -939,7 +939,7 @@ void CGameContext::OnClientEnter(int ClientID)
 
 		SendChatTarget(ClientID, "DDraceNetwork Mod. Version: " GAME_VERSION);
 		SendChatTarget(ClientID, "please visit https://ddnet.tw or say /info for more info");
-		SendChatTarget(ClientID, "This server is running the helpermod by Henritees, use /help if you get stuck.");
+		SendChatTarget(ClientID, "» This server is running Henritees' helpermod; use /help if you get stuck.");
 
 		if(g_Config.m_SvWelcome[0]!=0)
 			SendChatTarget(ClientID,g_Config.m_SvWelcome);

@@ -1383,7 +1383,7 @@ void CGameContext::ConGoto(IConsole::IResult *pResult, void *pUserData) // this 
 	sorted_array<SortHelper> aHelpNeeders;
 	for(int i = 0; i < pSelf->Server()->MaxClients(); i++)
 	{
-		if(!pSelf->m_apPlayers[i] || pSelf->m_apPlayers[i]->GetCID() == pResult->m_ClientID || !pSelf->m_apPlayers[i]->m_NeedHelp)
+		if(!pSelf->m_apPlayers[i] || pSelf->m_apPlayers[i]->GetCID() == pResult->m_ClientID || !(pSelf->m_apPlayers[i]->m_NeedHelp > 0))
 			continue;
 		SortHelper e(pSelf->m_apPlayers[i]);
 		aHelpNeeders.add(e);
@@ -1460,6 +1460,7 @@ void CGameContext::ConGoto(IConsole::IResult *pResult, void *pUserData) // this 
 		{
 			pChr->m_StateBeforeHelping.m_Pos = pChr->m_Pos;
 			pChr->m_StateBeforeHelping.m_Super = pChr->m_Super;
+			pChr->m_StateBeforeHelping.m_DDRaceState = pChr->m_DDRaceState;
 		}
 		pChr->m_StateBeforeHelping.NumHelps++; // let's save how many people we've helped :D
 
@@ -1512,12 +1513,12 @@ void CGameContext::ConReturn(IConsole::IResult *pResult, void *pUserData)
 	str_format(aBuf, sizeof(aBuf), "Returning to your position before helping %i people...", pChr->m_StateBeforeHelping.NumHelps);
 	pSelf->SendChatTarget(pResult->m_ClientID, aBuf);
 
-	// reset position and super
+	// reset position and state
 	pChr->m_Super = pChr->m_StateBeforeHelping.m_Super;
 	pChr->Core()->m_Pos = pChr->m_StateBeforeHelping.m_Pos;
 	pChr->m_Pos = pChr->m_StateBeforeHelping.m_Pos;
 	pChr->m_PrevPos = pChr->m_StateBeforeHelping.m_Pos;
-	pChr->m_DDRaceState = DDRACE_CHEAT;
+	pChr->m_DDRaceState = pChr->m_StateBeforeHelping.m_DDRaceState;
 	pPlayer->GetCharacter()->GetCore().m_Pos = pChr->m_StateBeforeHelping.m_Pos;
 
 	// reset the memory

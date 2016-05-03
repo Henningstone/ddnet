@@ -1329,7 +1329,15 @@ void CGameContext::ConHelp(IConsole::IResult *pResult, void *pUserData)
 	if(pChr->m_Super)
 		pSelf->SendChatTarget(pResult->m_ClientID, "Dude, you don't need help, you've got super! o.O");
 	else if(pPlayer->m_NeedHelp > 0)
+	{
+		char aBuf[256];
+		const int WAITTIME = (pSelf->Server()->Tick() - pPlayer->m_NeedHelp)/pSelf->Server()->TickSpeed();
+		const int TIMEOUT = g_Config.m_SvHelpTimeout - WAITTIME;
 		pSelf->SendChatTarget(pResult->m_ClientID, "You already requested help, please be patient and wait for a helper!");
+
+		str_format(aBuf, sizeof(aBuf), "State of your help request: Waiting for %i second%s, the request expires in %i second%s.", WAITTIME, WAITTIME > 1 ? "s" : "", TIMEOUT, TIMEOUT > 1 ? "s" : "");
+		pSelf->SendChatTarget(pResult->m_ClientID, aBuf);
+	}
 	else if(pPlayer->m_NeedHelp < 0)
 	{
 		char aBuf[256];
@@ -1408,13 +1416,31 @@ void CGameContext::ConGoto(IConsole::IResult *pResult, void *pUserData) // this 
 		const int ID = pResult->GetInteger(0);
 
 		// get by index
-		if(abs(ID) > pSelf->Server()->MaxClients())
+		if(abs(ID) > pSelf->Server()->MaxClients()) // ID was too high
 		{
 			str_format(aBuf, sizeof(aBuf), "Given client ID %i is too high, maximum is %i!", ID, pSelf->Server()->MaxClients());
 			pSelf->SendChatTarget(pResult->m_ClientID, aBuf);
 			return;
 		}
-		else if(ID < 0)
+		else if(!pSelf->m_apPlayers[ID]) // no player with this ID
+		{
+			str_format(aBuf, sizeof(aBuf), "There is no player with ID %i on the server!", ID);
+			pSelf->SendChatTarget(pResult->m_ClientID, aBuf);
+			return;
+		}
+		else if(pSelf->m_apPlayers[ID]->m_Afk) // player with ID is afk
+		{
+			str_format(aBuf, sizeof(aBuf), "ID:%s '%s' is afk and thus can't be in need of help", ID, pSelf->Server()->ClientName(ID));
+			pSelf->SendChatTarget(pResult->m_ClientID, aBuf);
+			return;
+		}
+		else if(pSelf->m_apPlayers[ID]->GetCharacter() && pSelf->m_apPlayers[ID]->GetCharacter()->m_Super) // player with ID has super
+		{
+			str_format(aBuf, sizeof(aBuf), "ID:%i '%s' certainly doesn't need help, they have super!", ID, pSelf->Server()->ClientName(ID));
+			pSelf->SendChatTarget(pResult->m_ClientID, aBuf);
+			return;
+		}
+		else if(ID < 0) // ----- get player in need by index
 		{
 			const int index = -1-ID;
 			if(index+1 > aHelpNeeders.size())
@@ -1510,11 +1536,12 @@ void CGameContext::ConReturn(IConsole::IResult *pResult, void *pUserData)
 	}
 
 	char aBuf[256];
-	str_format(aBuf, sizeof(aBuf), "Returning to your position before helping %i people...", pChr->m_StateBeforeHelping.NumHelps);
+	str_format(aBuf, sizeof(aBuf), "Returning to your position before helping %i time%s...", pChr->m_StateBeforeHelping.NumHelps, pChr->m_StateBeforeHelping.NumHelps > 1 ? "s" : "");
 	pSelf->SendChatTarget(pResult->m_ClientID, aBuf);
 
 	// reset position and state
-	pChr->m_Super = pChr->m_StateBeforeHelping.m_Super;
+	if(!pChr->m_StateBeforeHelping.m_Super)
+		CGameContext::ConUnSuper(pResult, pUserData);
 	pChr->Core()->m_Pos = pChr->m_StateBeforeHelping.m_Pos;
 	pChr->m_Pos = pChr->m_StateBeforeHelping.m_Pos;
 	pChr->m_PrevPos = pChr->m_StateBeforeHelping.m_Pos;

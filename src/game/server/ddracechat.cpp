@@ -1543,7 +1543,7 @@ void CGameContext::ConReturn(IConsole::IResult *pResult, void *pUserData)
 
 	// restore the character; resets position and state
 	mem_copy(pChr, pPlayer->m_StateBeforeHelping.pOldCharacter, sizeof(CCharacter));
-	delete pPlayer->m_StateBeforeHelping.pOldCharacter;
+	mem_free(pPlayer->m_StateBeforeHelping.pOldCharacter);
 	mem_zero(&pPlayer->m_StateBeforeHelping, sizeof(pPlayer->m_StateBeforeHelping));
 }
 

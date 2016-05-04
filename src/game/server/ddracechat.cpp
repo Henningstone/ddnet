@@ -1341,7 +1341,7 @@ void CGameContext::ConHelp(IConsole::IResult *pResult, void *pUserData)
 	else if(pPlayer->m_NeedHelp < 0)
 	{
 		char aBuf[256];
-		str_format(aBuf, sizeof(aBuf), "Please wait %i seconds before requesting help again", g_Config.m_SvHelpCooldown - (pPlayer->m_NeedHelp+pSelf->Server()->Tick())/pSelf->Server()->TickSpeed());
+		str_format(aBuf, sizeof(aBuf), "Please wait %i seconds before requesting help again", -(pPlayer->m_NeedHelp + pSelf->Server()->Tick()) / pSelf->Server()->TickSpeed() );
 		pSelf->SendChatTarget(pResult->m_ClientID, aBuf);
 	}
 	else if(HelpersOnline == 0)
@@ -1475,20 +1475,22 @@ void CGameContext::ConGoto(IConsole::IResult *pResult, void *pUserData) // this 
 	if(pPlayer->GetTeam() == TEAM_SPECTATORS)
 		pPlayer->SetTeam(TEAM_FLOCK);
 
-	if(!pPlayer->GetCharacter())
+	CCharacter *pChr = pPlayer->GetCharacter();
+	if(!pChr)
 		pPlayer->ForceSpawn(vec2(pHelpNeeder->GetCharacter()->m_Pos.x, pHelpNeeder->GetCharacter()->m_Pos.y));
 	else
 	{
-		CCharacter *pChr = pPlayer->GetCharacter();
 		int TeleTo = pHelpNeeder->GetCID();
 
-		if(!pChr->m_StateBeforeHelping.NumHelps)
+		// store the current character
+		if(!pPlayer->m_StateBeforeHelping.NumHelps)
 		{
-			pChr->m_StateBeforeHelping.m_Pos = pChr->m_Pos;
-			pChr->m_StateBeforeHelping.m_Super = pChr->m_Super;
-			pChr->m_StateBeforeHelping.m_DDRaceState = pChr->m_DDRaceState;
+			if(pPlayer->m_StateBeforeHelping.pOldCharacter)
+				delete pPlayer->m_StateBeforeHelping.pOldCharacter;
+			pPlayer->m_StateBeforeHelping.pOldCharacter = (CCharacter*)mem_alloc(sizeof(CCharacter), 0);
+			mem_copy(pPlayer->m_StateBeforeHelping.pOldCharacter, pChr, sizeof(CCharacter));
 		}
-		pChr->m_StateBeforeHelping.NumHelps++; // let's save how many people we've helped :D
+		pPlayer->m_StateBeforeHelping.NumHelps++; // let's save how many people we've helped :D
 
 		pChr->Core()->m_Pos = pSelf->m_apPlayers[TeleTo]->m_ViewPos;
 		pChr->m_Pos = pSelf->m_apPlayers[TeleTo]->m_ViewPos;
@@ -1496,14 +1498,14 @@ void CGameContext::ConGoto(IConsole::IResult *pResult, void *pUserData) // this 
 		pChr->m_DDRaceState = DDRACE_CHEAT;
 		pPlayer->GetCharacter()->GetCore().m_Pos = pHelpNeeder->GetCharacter()->m_Pos;
 	}
-	pHelpNeeder->m_NeedHelp = -(pSelf->Server()->Tick() + g_Config.m_SvHelpCooldown); // set the cooldown timer
+	pHelpNeeder->m_NeedHelp = -(pSelf->Server()->Tick() + g_Config.m_SvHelpCooldown*pSelf->Server()->TickSpeed()); // set the cooldown timer
 
 	// super the helper if he isn't already
-	if(!pPlayer->GetCharacter()->m_Super)
+	if(!pChr->m_Super)
 		CGameContext::ConSuper(pResult, pUserData);
 
 	char aBuf[256];
-	str_format(aBuf, sizeof(aBuf), "Teleporting to '%s' in order help them", pSelf->Server()->ClientName(pHelpNeeder->GetCID()));
+	str_format(aBuf, sizeof(aBuf), "Teleporting to ID:%i '%s' in order help them", pHelpNeeder->GetCID(), pSelf->Server()->ClientName(pHelpNeeder->GetCID()));
 	pSelf->SendChatTarget(pResult->m_ClientID, aBuf);
 	str_format(aBuf, sizeof(aBuf), "Your help request was accepted by '%s'.", pSelf->Server()->ClientName(pPlayer->GetCID()));
 	pSelf->SendChatTarget(pHelpNeeder->GetCID(), aBuf);
@@ -1529,28 +1531,20 @@ void CGameContext::ConReturn(IConsole::IResult *pResult, void *pUserData)
 		return;
 	}
 
-	if(!pChr->m_StateBeforeHelping.NumHelps)
+	if(!pPlayer->m_StateBeforeHelping.NumHelps)
 	{
 		pSelf->SendChatTarget(pResult->m_ClientID, "Use this command to return to your original position after helping somebody");
 		return;
 	}
 
 	char aBuf[256];
-	str_format(aBuf, sizeof(aBuf), "Returning to your position before helping %i time%s...", pChr->m_StateBeforeHelping.NumHelps, pChr->m_StateBeforeHelping.NumHelps > 1 ? "s" : "");
+	str_format(aBuf, sizeof(aBuf), "Returning to your position and state before accepting %i help request%s...", pPlayer->m_StateBeforeHelping.NumHelps, pPlayer->m_StateBeforeHelping.NumHelps > 1 ? "s" : "");
 	pSelf->SendChatTarget(pResult->m_ClientID, aBuf);
 
-	// reset position and state
-	if(!pChr->m_StateBeforeHelping.m_Super)
-		CGameContext::ConUnSuper(pResult, pUserData);
-	pChr->Core()->m_Pos = pChr->m_StateBeforeHelping.m_Pos;
-	pChr->m_Pos = pChr->m_StateBeforeHelping.m_Pos;
-	pChr->m_PrevPos = pChr->m_StateBeforeHelping.m_Pos;
-	pChr->m_DDRaceState = pChr->m_StateBeforeHelping.m_DDRaceState;
-	pPlayer->GetCharacter()->GetCore().m_Pos = pChr->m_StateBeforeHelping.m_Pos;
-
-	// reset the memory
-	pChr->m_StateBeforeHelping.NumHelps = 0;
-	pChr->m_StateBeforeHelping.m_Super = false;
+	// restore the character; resets position and state
+	mem_copy(pChr, pPlayer->m_StateBeforeHelping.pOldCharacter, sizeof(CCharacter));
+	delete pPlayer->m_StateBeforeHelping.pOldCharacter;
+	mem_zero(&pPlayer->m_StateBeforeHelping, sizeof(pPlayer->m_StateBeforeHelping));
 }
 
 // helpermod
@@ -1573,7 +1567,7 @@ void CGameContext::ConHelpList(IConsole::IResult *pResult, void *pUserData)
 	sorted_array<SortHelper> aHelpNeeders;
 	for(int i = 0; i < pSelf->Server()->MaxClients(); i++)
 	{
-		if(!pSelf->m_apPlayers[i] || pSelf->m_apPlayers[i]->GetCID() == pResult->m_ClientID || !pSelf->m_apPlayers[i]->m_NeedHelp)
+		if(!pSelf->m_apPlayers[i] || pSelf->m_apPlayers[i]->GetCID() == pResult->m_ClientID || !(pSelf->m_apPlayers[i]->m_NeedHelp > 0))
 			continue;
 		SortHelper e(pSelf->m_apPlayers[i]);
 		aHelpNeeders.add(e);

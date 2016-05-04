@@ -250,14 +250,6 @@ public:
 	bool m_LastPenalty;
 	bool m_LastBonus;
 
-	struct
-	{
-		int NumHelps;
-		bool m_Super;
-		int m_DDRaceState;
-		vec2 m_Pos;
-	} m_StateBeforeHelping;
-
 	// Setters/Getters because i don't want to modify vanilla vars access modifiers
 	int GetLastWeapon() { return m_LastWeapon; };
 	void SetLastWeapon(int LastWeap) {m_LastWeapon = LastWeap; };

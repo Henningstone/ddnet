@@ -25,10 +25,6 @@ CCharacter::CCharacter(CGameWorld *pWorld)
 	m_ProximityRadius = ms_PhysSize;
 	m_Health = 0;
 	m_Armor = 0;
-
-	// helpermod
-	m_StateBeforeHelping.NumHelps = 0;
-	m_StateBeforeHelping.m_Super = false;
 }
 
 void CCharacter::Reset()

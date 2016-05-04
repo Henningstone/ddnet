@@ -39,6 +39,11 @@ CPlayer::~CPlayer()
 
 void CPlayer::Reset()
 {
+	// helpermod
+	if(m_StateBeforeHelping.pOldCharacter)
+		delete m_StateBeforeHelping.pOldCharacter;
+	mem_zero(&m_StateBeforeHelping, sizeof(m_StateBeforeHelping));
+
 	m_DieTick = Server()->Tick();
 	m_JoinTick = Server()->Tick();
 	if (m_pCharacter)
@@ -174,8 +179,7 @@ void CPlayer::Tick()
 		str_format(aBuf, sizeof(aBuf), "Your help request timed out, the helpers seem to be busy right now :\\");
 		GameServer()->SendChatTarget(m_ClientID, aBuf);
 	}
-
-	if(m_NeedHelp < 0 && (m_NeedHelp+Server()->Tick())/Server()->TickSpeed() > g_Config.m_SvHelpCooldown)
+	else if(m_NeedHelp < 0 && Server()->Tick() > -m_NeedHelp)
 	{
 		m_NeedHelp = 0; // reset cooldown
 	}

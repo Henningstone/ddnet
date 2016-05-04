@@ -162,6 +162,11 @@ public:
 	// helpermod
 	int m_NeedHelp;
 	bool CanHelp() const { return !m_Afk && m_Authed; }
+	struct
+	{
+		int NumHelps;
+		CCharacter *pOldCharacter;
+	} m_StateBeforeHelping;
 
 	int m_ChatScore;
 
